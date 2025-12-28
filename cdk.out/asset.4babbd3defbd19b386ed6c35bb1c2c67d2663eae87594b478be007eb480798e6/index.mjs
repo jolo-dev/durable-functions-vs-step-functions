@@ -1,1 +1,0 @@
-import{InvokeCommand as o,LambdaClient as n}from"@aws-sdk/client-lambda";var r=new n,d=async e=>{console.log("durable-invoker",e);let a=JSON.parse(e.body||"{}");return await r.send(new o({FunctionName:process.env.FUNCTION_NAME??"durable-handler",InvocationType:"Event",Payload:JSON.stringify({email:a.email})})),{statusCode:202,body:"Accepted"}};export{d as handler};
