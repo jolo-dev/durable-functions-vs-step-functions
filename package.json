@@ -1,0 +1,36 @@
+{
+  "name": "durable-functions-vs-step-functions",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "aws-cdk": "^2.1100.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.956.0",
+    "@aws-sdk/client-lambda": "^3.958.0",
+    "@aws-sdk/client-ses": "^3.0.0",
+    "@aws-sdk/client-sfn": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.957.0",
+    "@aws/durable-execution-sdk-js": "^1.0.1",
+    "@types/aws-lambda": "^8.10.159",
+    "aws-cdk-lib": "^2.233.0",
+    "cdk-booster": "^1.2.1",
+    "constructs": "^10.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "synth": "cdk synth"
+  },
+  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
+}

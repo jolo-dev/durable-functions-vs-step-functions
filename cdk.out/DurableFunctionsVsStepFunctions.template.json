@@ -1,0 +1,1049 @@
+{
+ "Resources": {
+  "StateTable9728C7E5": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "sort",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "sort",
+      "KeyType": "RANGE"
+     }
+    ],
+    "TableName": "MagicCode"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/StateTable/Resource"
+   }
+  },
+  "SenderIdentity5AECAF6F": {
+   "Type": "AWS::SES::EmailIdentity",
+   "Properties": {
+    "EmailIdentity": "johnyscrazy@gmail.com"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/SenderIdentity/Resource"
+   }
+  },
+  "StepSendEmailServiceRole0D8D9D68": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/StepSendEmail/ServiceRole/Resource"
+   }
+  },
+  "StepSendEmailServiceRoleDefaultPolicyBC52E8B9": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "StateTable9728C7E5",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":ses:eu-central-1:246350246460:identity/",
+          {
+           "Ref": "SenderIdentity5AECAF6F"
+          }
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "StepSendEmailServiceRoleDefaultPolicyBC52E8B9",
+    "Roles": [
+     {
+      "Ref": "StepSendEmailServiceRole0D8D9D68"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/StepSendEmail/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "StepSendEmailCD418E23": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-246350246460-eu-central-1",
+     "S3Key": "785699e3c33df5fab201d7405abdfba6c14f9fcb27172a705017a2a19c606caf.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": {
+       "Ref": "StateTable9728C7E5"
+      },
+      "SENDER_EMAIL": "johnyscrazy@gmail.com"
+     }
+    },
+    "FunctionName": "step-send-email",
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "StepSendEmailServiceRole0D8D9D68",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs24.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "StepSendEmailServiceRoleDefaultPolicyBC52E8B9",
+    "StepSendEmailServiceRole0D8D9D68"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/StepSendEmail/Resource",
+    "aws:asset:path": "asset.785699e3c33df5fab201d7405abdfba6c14f9fcb27172a705017a2a19c606caf",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "EmailStateMachineRole2F9DF81E": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "states.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailStateMachine/Role/Resource"
+   }
+  },
+  "EmailStateMachineRoleDefaultPolicy0E14564F": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "lambda:InvokeFunction",
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "StepSendEmailCD418E23",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "StepSendEmailCD418E23",
+             "Arn"
+            ]
+           },
+           ":*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "EmailStateMachineRoleDefaultPolicy0E14564F",
+    "Roles": [
+     {
+      "Ref": "EmailStateMachineRole2F9DF81E"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailStateMachine/Role/DefaultPolicy/Resource"
+   }
+  },
+  "EmailStateMachine78CA490A": {
+   "Type": "AWS::StepFunctions::StateMachine",
+   "Properties": {
+    "DefinitionString": {
+     "Fn::Join": [
+      "",
+      [
+       "{\"StartAt\":\"SendEmailStep\",\"States\":{\"SendEmailStep\":{\"Next\":\"IsCodeCorrect?\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"Resource\":\"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":states:::lambda:invoke.waitForTaskToken\",\"Parameters\":{\"FunctionName\":\"",
+       {
+        "Fn::GetAtt": [
+         "StepSendEmailCD418E23",
+         "Arn"
+        ]
+       },
+       "\",\"Payload\":{\"email.$\":\"$.email\",\"taskToken.$\":\"$$.Task.Token\"}}},\"IsCodeCorrect?\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.verification\",\"StringEquals\":\"ok\",\"Next\":\"Success\"}],\"Default\":\"IncorrectCode\"},\"IncorrectCode\":{\"Type\":\"Fail\",\"Error\":\"IncorrectCode\",\"Cause\":\"Verification code did not match\"},\"Success\":{\"Type\":\"Succeed\"}},\"TimeoutSeconds\":900}"
+      ]
+     ]
+    },
+    "RoleArn": {
+     "Fn::GetAtt": [
+      "EmailStateMachineRole2F9DF81E",
+      "Arn"
+     ]
+    },
+    "StateMachineName": "EmailProcessingWorkflow"
+   },
+   "DependsOn": [
+    "EmailStateMachineRoleDefaultPolicy0E14564F",
+    "EmailStateMachineRole2F9DF81E"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailStateMachine/Resource"
+   }
+  },
+  "DurableHandlerServiceRoleB2BB3DAD": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicDurableExecutionRolePolicy"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/DurableHandler/ServiceRole/Resource"
+   }
+  },
+  "DurableHandlerServiceRoleDefaultPolicy6B3EA19D": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "StateTable9728C7E5",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":ses:eu-central-1:246350246460:identity/",
+          {
+           "Ref": "SenderIdentity5AECAF6F"
+          }
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "DurableHandlerServiceRoleDefaultPolicy6B3EA19D",
+    "Roles": [
+     {
+      "Ref": "DurableHandlerServiceRoleB2BB3DAD"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/DurableHandler/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "DurableHandler3C0774E3": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-246350246460-eu-central-1",
+     "S3Key": "6dd6b60eb3fffe2d4393e9b145827b6e4d8ca3c59aac608ceea9865239352d64.zip"
+    },
+    "DurableConfig": {
+     "ExecutionTimeout": 900
+    },
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": {
+       "Ref": "StateTable9728C7E5"
+      }
+     }
+    },
+    "FunctionName": "durable-handler",
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "DurableHandlerServiceRoleB2BB3DAD",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs24.x"
+   },
+   "DependsOn": [
+    "DurableHandlerServiceRoleDefaultPolicy6B3EA19D",
+    "DurableHandlerServiceRoleB2BB3DAD"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/DurableHandler/Resource",
+    "aws:asset:path": "asset.6dd6b60eb3fffe2d4393e9b145827b6e4d8ca3c59aac608ceea9865239352d64",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "DurableInvokerServiceRole27025B81": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/DurableInvoker/ServiceRole/Resource"
+   }
+  },
+  "DurableInvokerServiceRoleDefaultPolicyEF099CF7": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "lambda:InvokeFunction",
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "DurableHandler3C0774E3",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "DurableHandler3C0774E3",
+             "Arn"
+            ]
+           },
+           ":*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "DurableInvokerServiceRoleDefaultPolicyEF099CF7",
+    "Roles": [
+     {
+      "Ref": "DurableInvokerServiceRole27025B81"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/DurableInvoker/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "DurableInvoker914F067D": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-246350246460-eu-central-1",
+     "S3Key": "c2eacfcd3afe381b5e9d6e85aee3a50ff0ab8e92c16d441342c92c34bf54dd82.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "FUNCTION_ARN": {
+       "Fn::GetAtt": [
+        "DurableHandler3C0774E3",
+        "Arn"
+       ]
+      }
+     }
+    },
+    "FunctionName": "durable-invoker",
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "DurableInvokerServiceRole27025B81",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs24.x"
+   },
+   "DependsOn": [
+    "DurableInvokerServiceRoleDefaultPolicyEF099CF7",
+    "DurableInvokerServiceRole27025B81"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/DurableInvoker/Resource",
+    "aws:asset:path": "asset.c2eacfcd3afe381b5e9d6e85aee3a50ff0ab8e92c16d441342c92c34bf54dd82",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "TokenHandlerServiceRole5F6EEBA1": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/TokenHandler/ServiceRole/Resource"
+   }
+  },
+  "TokenHandlerServiceRoleDefaultPolicy47E9CCED": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "states:SendTaskSuccess",
+       "Effect": "Allow",
+       "Resource": {
+        "Ref": "EmailStateMachine78CA490A"
+       }
+      },
+      {
+       "Action": [
+        "lambda:SendDurableExecutionCallbackSuccess",
+        "lambda:SendDurableExecutionCallbackFailure"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "DurableHandler3C0774E3",
+             "Arn"
+            ]
+           },
+           ":*"
+          ]
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "DurableHandler3C0774E3",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "StateTable9728C7E5",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "StateTable9728C7E5",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "TokenHandlerServiceRoleDefaultPolicy47E9CCED",
+    "Roles": [
+     {
+      "Ref": "TokenHandlerServiceRole5F6EEBA1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/TokenHandler/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "TokenHandler84BB90A6": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-246350246460-eu-central-1",
+     "S3Key": "56cfcfcba5111906d5b3177ee2f569697aa51f017fd78dfcba5992d15e5effaf.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": {
+       "Ref": "StateTable9728C7E5"
+      },
+      "DURABLE_FUNCTION": {
+       "Fn::GetAtt": [
+        "DurableHandler3C0774E3",
+        "Arn"
+       ]
+      }
+     }
+    },
+    "FunctionName": "token-handler",
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "TokenHandlerServiceRole5F6EEBA1",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs24.x"
+   },
+   "DependsOn": [
+    "TokenHandlerServiceRoleDefaultPolicy47E9CCED",
+    "TokenHandlerServiceRole5F6EEBA1"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/TokenHandler/Resource",
+    "aws:asset:path": "asset.56cfcfcba5111906d5b3177ee2f569697aa51f017fd78dfcba5992d15e5effaf",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "EmailHttpApiE2EBE3BB": {
+   "Type": "AWS::ApiGatewayV2::Api",
+   "Properties": {
+    "Description": "HTTP API for email processing with durable and step functions",
+    "Name": "Email Service API",
+    "ProtocolType": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/Resource"
+   }
+  },
+  "EmailHttpApiDefaultStage8D5D2056": {
+   "Type": "AWS::ApiGatewayV2::Stage",
+   "Properties": {
+    "AccessLogSettings": {
+     "DestinationArn": {
+      "Fn::GetAtt": [
+       "DurableFunctionsVsStepFunctionslogs1A0FCD73",
+       "Arn"
+      ]
+     },
+     "Format": "{\"requestId\":\"$context.requestId\",\"ip\":\"$context.identity.sourceIp\",\"caller\":\"$context.identity.caller\",\"user\":\"$context.identity.user\",\"requestTime\":\"$context.requestTime\",\"httpMethod\":\"$context.httpMethod\",\"resourcePath\":\"$context.resourcePath\",\"status\":\"$context.status\",\"protocol\":\"$context.protocol\",\"responseLength\":\"$context.responseLength\"}"
+    },
+    "ApiId": {
+     "Ref": "EmailHttpApiE2EBE3BB"
+    },
+    "AutoDeploy": true,
+    "StageName": "$default"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/DefaultStage/Resource"
+   }
+  },
+  "EmailHttpApiPOSTstepsInvokeRole791E46DA": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "apigateway.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--steps/InvokeRole/Resource"
+   }
+  },
+  "EmailHttpApiPOSTstepsInvokeRoleDefaultPolicy0F58DDCC": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "states:StartExecution",
+       "Effect": "Allow",
+       "Resource": {
+        "Ref": "EmailStateMachine78CA490A"
+       },
+       "Sid": "AllowStepFunctionsExecution"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "EmailHttpApiPOSTstepsInvokeRoleDefaultPolicy0F58DDCC",
+    "Roles": [
+     {
+      "Ref": "EmailHttpApiPOSTstepsInvokeRole791E46DA"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--steps/InvokeRole/DefaultPolicy/Resource"
+   }
+  },
+  "EmailHttpApiPOSTstepsStepsIntegrationDFD627DB": {
+   "Type": "AWS::ApiGatewayV2::Integration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "EmailHttpApiE2EBE3BB"
+    },
+    "ConnectionType": "INTERNET",
+    "CredentialsArn": {
+     "Fn::GetAtt": [
+      "EmailHttpApiPOSTstepsInvokeRole791E46DA",
+      "Arn"
+     ]
+    },
+    "IntegrationSubtype": "StepFunctions-StartExecution",
+    "IntegrationType": "AWS_PROXY",
+    "PayloadFormatVersion": "1.0",
+    "RequestParameters": {
+     "Input": "$request.body",
+     "StateMachineArn": {
+      "Ref": "EmailStateMachine78CA490A"
+     }
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--steps/StepsIntegration/Resource"
+   }
+  },
+  "EmailHttpApiPOSTsteps3C66DACF": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "EmailHttpApiE2EBE3BB"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "POST /steps",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "EmailHttpApiPOSTstepsStepsIntegrationDFD627DB"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--steps/Resource"
+   }
+  },
+  "EmailHttpApiPOSTdurableDurableIntegrationEC0C48A4": {
+   "Type": "AWS::ApiGatewayV2::Integration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "EmailHttpApiE2EBE3BB"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": {
+     "Fn::GetAtt": [
+      "DurableInvoker914F067D",
+      "Arn"
+     ]
+    },
+    "PayloadFormatVersion": "2.0"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--durable/DurableIntegration/Resource"
+   }
+  },
+  "EmailHttpApiPOSTdurableDurableIntegrationPermission30E90B1C": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "DurableInvoker914F067D",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:eu-central-1:246350246460:",
+       {
+        "Ref": "EmailHttpApiE2EBE3BB"
+       },
+       "/*/*/durable"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--durable/DurableIntegration-Permission"
+   }
+  },
+  "EmailHttpApiPOSTdurableF25FFEB5": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "EmailHttpApiE2EBE3BB"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "POST /durable",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "EmailHttpApiPOSTdurableDurableIntegrationEC0C48A4"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--durable/Resource"
+   }
+  },
+  "EmailHttpApiPOSTtokenToken8AD70EE0": {
+   "Type": "AWS::ApiGatewayV2::Integration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "EmailHttpApiE2EBE3BB"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": {
+     "Fn::GetAtt": [
+      "TokenHandler84BB90A6",
+      "Arn"
+     ]
+    },
+    "PayloadFormatVersion": "2.0"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--token/Token/Resource"
+   }
+  },
+  "EmailHttpApiPOSTtokenTokenPermission16FF8DC2": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "TokenHandler84BB90A6",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:eu-central-1:246350246460:",
+       {
+        "Ref": "EmailHttpApiE2EBE3BB"
+       },
+       "/*/*/token"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--token/Token-Permission"
+   }
+  },
+  "EmailHttpApiPOSTtokenD8C187E6": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "EmailHttpApiE2EBE3BB"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "POST /token",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "EmailHttpApiPOSTtokenToken8AD70EE0"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/EmailHttpApi/POST--token/Resource"
+   }
+  },
+  "DurableFunctionsVsStepFunctionslogs1A0FCD73": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/aws/vendedlogs/aws-apigatewayv2/DurableFunctionsVsStepFunctions/logs",
+    "RetentionInDays": 731
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/DurableFunctionsVsStepFunctions-logs/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/11R227CMAz9lr0HbypfAGhsSOwiundkUlNM26SqHRCK+u9TAkzbns7x7dgnKaCYTuHpAc8ysVUzaXkHsVS0jcGzbGN1cdj5agfxC3ctmcXeZTIaIYH43CG3q4qcsl5S8U9iNKLU74Ozyt4JxMXBsyVTBmuJKrNEbk2pqPSG9sAuy/+OR9Nit6tw63xFR4H3DMuboGHsIG789ayMn75lmw+5stHIdIsipAKzBEamMA+2IZ2j0E0e4mLvflTTMA0di7B3/yxsFaURWOexlTv5hgz2XKPSGS+nAuKraj/rOakkSGGpWN+t1ZRTGx/0ylZOqR7wvvlfmPtG0/paIK59/TL40KfCnY+j2ZD4MFgy2WDawa5OPR9B+6CjSY8HR3k8FQWkvz4K82QITrkj2FzxG1ONDM8IAgAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DurableFunctionsVsStepFunctions/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "ApiUrl": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "EmailHttpApiE2EBE3BB"
+      },
+      ".execute-api.eu-central-1.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/"
+     ]
+    ]
+   }
+  },
+  "StateMachineArn": {
+   "Value": {
+    "Ref": "EmailStateMachine78CA490A"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

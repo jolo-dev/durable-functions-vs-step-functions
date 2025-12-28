@@ -1,0 +1,9 @@
+{
+  "app": "bunx cdk-booster index.ts",
+  "watch": {
+    "include": [
+      "./lambdas/**",
+      "./infra/**"
+    ]
+  }
+}
