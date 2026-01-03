@@ -16,7 +16,7 @@ export interface SendEmailResult {
   timestamp: string;
   status: string;
   taskToken?: string;
-  code: string
+  code: string;
 }
 
 export interface CheckValueResult {
@@ -26,4 +26,26 @@ export interface CheckValueResult {
   isCorrect: boolean;
   checkResult: string;
   checkedAt: string;
+}
+
+export interface TokenEvent {
+  body: TokenRequestBody;
+}
+
+export interface TokenRequestBody {
+  token: string;
+  code: string;
+  email: string;
+  durable?: boolean;
+}
+
+export interface InvokerBody {
+  email: string;
+}
+
+
+
+export interface CheckValueInput {
+  email: string;
+  code: string;
 }

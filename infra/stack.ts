@@ -35,9 +35,8 @@ import {
   LambdaInvoke
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { Policy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
-import { sendEmail } from '../lambdas/shared/send-email';
 
 export class DurableFunctionsVsStepFunctionsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -127,7 +126,7 @@ export class DurableFunctionsVsStepFunctionsStack extends Stack {
       },
     });
 
-    stateTable.grantWriteData(durableHandler);
+    stateTable.grantReadWriteData(durableHandler);
     emailIdentity.grantSendEmail(durableHandler)
 
     const durableInvoker = new NodejsFunction(this, 'DurableInvoker', {

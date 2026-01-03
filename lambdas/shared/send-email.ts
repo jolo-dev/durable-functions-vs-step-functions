@@ -1,9 +1,8 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import { DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
 import { EmailRequest, SendEmailResult } from './types';
+import { putVerificationCode } from './dynamodb';
 
 const sesClient = new SESClient({});
-const dynamoClient = new DynamoDBClient({});
 
 export const sendEmail = async (request: EmailRequest): Promise<SendEmailResult> => {
   console.log('send-email request', request)
@@ -32,19 +31,8 @@ export const sendEmail = async (request: EmailRequest): Promise<SendEmailResult>
     </html>
   `;
 
-  // Store request in DynamoDB
-  // Partition Key: email address, Sort Key: code
-  await dynamoClient.send(new PutItemCommand({
-    TableName: process.env.TABLE_NAME!,
-    Item: {
-      id: { S: email }, // Use email as partition key
-      sort: { S: code }, // Use code as sort key for verification
-      status: { S: 'pending' },
-      timestamp: { S: timestamp }
-    }
-  }));
+  await putVerificationCode(email, code, timestamp);
 
-  // Send email via SES
   const sendEmailCommand = new SendEmailCommand({
     Source: 'johnyscrazy@gmail.com',
     Destination: {

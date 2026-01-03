@@ -1,3 +1,4 @@
+import { checkValue } from "../shared/check-value";
 import { sendEmail } from "../shared/send-email"
 import { EmailRequest } from "../shared/types"
 import {
@@ -20,6 +21,10 @@ export const handler: DurableLambdaHandler = withDurableExecution<EmailRequest>(
             email,
             taskToken: callbackId
           });
+          ctx.logger.info(`DurableLambdaHandler result ${result}`, result)
+
+          const foundValue = await checkValue(email, result.code)
+          ctx.logger.info('DurableLambdaHandler foundValue', foundValue)
         },
         {
           timeout: { minutes: 15 },

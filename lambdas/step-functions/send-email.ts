@@ -1,25 +1,23 @@
 import { sendEmail } from '../shared/send-email';
-import { EmailRequest } from '../shared/types';
+import { EmailRequest, SendEmailResult } from '../shared/types';
 
 const generateCode = (): string => Math.floor(100000 + Math.random() * 900000).toString();
 
-export const handler = async (event: EmailRequest) => {
+export const handler = async (event: EmailRequest): Promise<SendEmailResult> => {
   console.log('Step Functions send-email handler:', JSON.stringify(event, null, 2));
 
   const code = generateCode();
-  const { email, taskToken } = event
+  const { email, taskToken } = event;
+
   try {
-    // The request for sendEmail now includes the generated code and requestId
-    await sendEmail({
+    const result = await sendEmail({
       email,
       taskToken
     });
 
-    // Return the state for the next step (Wait For Signal)
     return {
-      email: event.email,
-      code,
-      status: 'email_sent'
+      ...result,
+      code
     };
   } catch (error) {
     console.error('Error in step-functions send-email:', error);
