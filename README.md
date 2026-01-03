@@ -2,6 +2,10 @@
 
 A comparison of Durable Functions and AWS Step Functions for managing asynchronous workflows with task tokens.
 
+## Architecture
+
+![Architecture](./architecture.png)
+
 ## Setup
 
 ```bash
@@ -38,6 +42,8 @@ npx cdk destroy
 - `infra/stack.ts` - AWS CDK v2 infrastructure definition
 
 ## Workflow
+
+![Workflow](./flow.png)
 
 The demo implements a verification code workflow:
 1. Send email with a 6-digit code
